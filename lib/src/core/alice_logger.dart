@@ -80,7 +80,5 @@ class AliceLogger {
     }
   }
 
-  void clearLogs() {
-    logs.clear();
-  }
+  void clearLogs() => clear();
 }

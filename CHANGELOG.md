@@ -1,3 +1,9 @@
+# 0.4.0
+* Added "Analytics" tab with captured events: list, search, a "Filter & sort" bottom sheet (multi-select categories and modules, hidden events, sort) with removable active-filter chips, delete and details (overview, parameters, raw JSON, copy and share)
+* Added `Alice.addEvent`, `Alice.clearEvents`, `maxEventsCount`, `eventDetailBuilder` and `hiddenEventNames`
+* Added `AliceEvent.module` and `AliceEvent.source` ("Logged from")
+* Fixed logs added with `addLog` / `addLogs` and cleared logs not refreshing the "Logger" tab
+
 # 0.3.3
 * Updated dependencies
 * Added fix for call time for http package (by itsara-odds https://github.com/itsara-odds)

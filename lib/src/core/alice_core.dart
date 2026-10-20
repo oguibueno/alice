@@ -2,6 +2,7 @@
 import 'dart:async';
 
 import 'package:alice/src/core/alice_logger.dart';
+import 'package:alice/src/model/alice_event.dart';
 import 'package:alice/src/model/alice_http_call.dart';
 import 'package:alice/src/model/alice_http_error.dart';
 import 'package:alice/src/model/alice_http_response.dart';
@@ -23,6 +24,20 @@ class AliceCore {
   ///method queue will be used to remove elements.
   final int maxCallsCount;
 
+  /// Rx subject which contains all captured events, oldest first
+  final BehaviorSubject<List<AliceEvent>> eventsSubject =
+      BehaviorSubject.seeded([]);
+
+  ///Max number of events that are stored in memory. When count is reached, the
+  ///oldest events are removed.
+  final int maxEventsCount;
+
+  /// Optional builder for an extra section in the event details screen.
+  final AliceEventDetailBuilder? eventDetailBuilder;
+
+  /// Event names hidden from the events list until included from the screen.
+  final Set<String> hiddenEventNames;
+
   ///Directionality of app. If null then directionality of context will be used.
   final TextDirection? directionality;
 
@@ -39,13 +54,20 @@ class AliceCore {
   AliceCore({
     required this.darkTheme,
     required this.maxCallsCount,
+    this.maxEventsCount = 1000,
+    this.eventDetailBuilder,
+    this.hiddenEventNames = const {},
     this.directionality,
     this.showShareButton,
   }) : _brightness = darkTheme ? Brightness.dark : Brightness.light;
 
+  /// Logger backing the "Logger" tab
+  AliceLogger get logger => _aliceLogger;
+
   /// Dispose subjects and subscriptions
   void dispose() {
     callsSubject.close();
+    eventsSubject.close();
     _callsSubscription?.cancel();
   }
 
@@ -125,11 +147,23 @@ class AliceCore {
 
   /// Adds new log to Alice logger.
   void addLog(AliceLog log) {
-    _aliceLogger.logs.add(log);
+    _aliceLogger.add(log);
   }
 
   /// Adds list of logs to Alice logger
   void addLogs(List<AliceLog> logs) {
-    _aliceLogger.logs.addAll(logs);
+    logs.forEach(_aliceLogger.add);
+  }
+
+  /// Adds new event to events subject
+  void addEvent(AliceEvent event) {
+    final events = [...eventsSubject.value, event];
+    final overflow = events.length - maxEventsCount;
+    eventsSubject.add(overflow > 0 ? events.sublist(overflow) : events);
+  }
+
+  /// Remove all events from events subject
+  void removeEvents() {
+    eventsSubject.add([]);
   }
 }

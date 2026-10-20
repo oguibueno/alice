@@ -1,4 +1,4 @@
-enum AliceTabItem { inspector, logger }
+enum AliceTabItem { inspector, logger, analytics }
 
 extension AliceTabItemExtension on AliceTabItem {
   String get title {
@@ -7,6 +7,8 @@ extension AliceTabItemExtension on AliceTabItem {
         return 'Inspector';
       case AliceTabItem.logger:
         return 'Logger';
+      case AliceTabItem.analytics:
+        return 'Analytics';
     }
   }
 }

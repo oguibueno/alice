@@ -3,12 +3,14 @@ import 'dart:io';
 import 'package:alice/src/core/alice_core.dart';
 import 'package:alice/src/core/http/alice_http_adapter.dart';
 import 'package:alice/src/core/http_client/alice_http_client_adapter.dart';
+import 'package:alice/src/model/alice_event.dart';
 import 'package:alice/src/model/alice_http_call.dart';
 import 'package:alice/src/model/alice_log.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:http/http.dart' as http;
 
+export 'package:alice/src/model/alice_event.dart';
 export 'package:alice/src/model/alice_log.dart';
 
 class Alice {
@@ -26,6 +28,17 @@ class Alice {
   ///Flag used to show/hide share button
   final bool? showShareButton;
 
+  ///Max number of events that are stored in memory. When count is reached,
+  ///the oldest events are removed.
+  final int maxEventsCount;
+
+  ///Optional builder for an extra section in the event details screen.
+  final AliceEventDetailBuilder? eventDetailBuilder;
+
+  ///Event names hidden from the events list by default. They can be included
+  ///from the "Analytics" tab.
+  final Set<String> hiddenEventNames;
+
   late AliceCore _aliceCore;
   late AliceHttpClientAdapter _httpClientAdapter;
   late AliceHttpAdapter _httpAdapter;
@@ -36,10 +49,16 @@ class Alice {
     this.maxCallsCount = 1000,
     this.directionality,
     this.showShareButton = true,
+    this.maxEventsCount = 1000,
+    this.eventDetailBuilder,
+    this.hiddenEventNames = const {},
   }) {
     _aliceCore = AliceCore(
       darkTheme: darkTheme,
       maxCallsCount: maxCallsCount,
+      maxEventsCount: maxEventsCount,
+      eventDetailBuilder: eventDetailBuilder,
+      hiddenEventNames: hiddenEventNames,
       directionality: directionality,
       showShareButton: showShareButton,
     );
@@ -97,5 +116,15 @@ class Alice {
   /// Adds list of logs to Alice logger
   void addLogs(List<AliceLog> logs) {
     _aliceCore.addLogs(logs);
+  }
+
+  /// Adds new event to the Alice "Analytics" tab.
+  void addEvent(AliceEvent event) {
+    _aliceCore.addEvent(event);
+  }
+
+  /// Removes all events from the Alice "Analytics" tab.
+  void clearEvents() {
+    _aliceCore.removeEvents();
   }
 }

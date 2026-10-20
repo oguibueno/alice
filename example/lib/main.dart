@@ -83,6 +83,11 @@ class _ExampleBodyState extends State<_ExampleBody> {
               onPressed: _logExampleData,
               style: _buttonStyle,
             ),
+            ElevatedButton(
+              onPressed: _addExampleEvents,
+              style: _buttonStyle,
+              child: const Text('Add example analytics events'),
+            ),
             const SizedBox(height: 24),
             _getTextWidget(
                 "After clicking on buttons above, you should receive notification."
@@ -104,6 +109,29 @@ class _ExampleBodyState extends State<_ExampleBody> {
       style: TextStyle(fontSize: 14),
       textAlign: TextAlign.center,
     );
+  }
+
+  void _addExampleEvents() {
+    _alice
+      ..addEvent(AliceEvent(name: '/cart', category: 'screen'))
+      ..addEvent(
+        AliceEvent(
+          name: 'checkout_started',
+          parameters: const {'items': 3, 'currency': 'MXN'},
+          metadata: const {'screen': '/cart'},
+          module: 'checkout',
+        ),
+      )
+      ..addEvent(
+        AliceEvent(
+          name: 'purchase',
+          category: 'marketing',
+          parameters: const {'value': 199.9},
+          metadata: const {'screen': '/cart'},
+          module: 'checkout',
+        ),
+      )
+      ..addEvent(AliceEvent(name: 'paused', category: 'lifecycle'));
   }
 
   void _logExampleData() {

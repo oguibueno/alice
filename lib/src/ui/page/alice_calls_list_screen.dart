@@ -2,6 +2,7 @@
 import 'package:alice/src/core/alice_core.dart';
 import 'package:alice/src/core/alice_logger.dart';
 import 'package:alice/src/helper/alice_alert_helper.dart';
+import 'package:alice/src/model/alice_event_filter.dart';
 import 'package:alice/src/model/alice_http_call.dart';
 import 'package:alice/src/model/alice_menu_item.dart';
 import 'package:alice/src/model/alice_sort_option.dart';
@@ -9,6 +10,8 @@ import 'package:alice/src/model/alice_tab_item.dart';
 import 'package:alice/src/ui/page/alice_call_details_screen.dart';
 import 'package:alice/src/ui/page/alice_stats_screen.dart';
 import 'package:alice/src/ui/widget/alice_call_list_item_widget.dart';
+import 'package:alice/src/ui/widget/alice_events_filter_sheet.dart';
+import 'package:alice/src/ui/widget/alice_events_list_widget.dart';
 import 'package:alice/src/ui/widget/alice_log_list_widget.dart';
 import 'package:alice/src/ui/widget/alice_raw_log_list_widger.dart';
 import 'package:alice/src/utils/alice_constants.dart';
@@ -32,8 +35,11 @@ class _AliceCallsListScreenState extends State<AliceCallsListScreen>
   final _tabItems = AliceTabItem.values;
   final ScrollController _scrollController = ScrollController();
 
+  final _eventsDeleteMenuItem = AliceMenuItem('Delete', Icons.delete);
+
   AliceSortOption? _sortOption = AliceSortOption.time;
   bool _sortAscending = false;
+  AliceEventFilter _eventFilter = const AliceEventFilter();
   bool _searchEnabled = false;
   bool isAndroidRawLogsEnabled = false;
   int _selectedIndex = 0;
@@ -72,9 +78,10 @@ class _AliceCallsListScreenState extends State<AliceCallsListScreen>
     _scrollController.dispose();
   }
 
+  AliceTabItem get _selectedTab => _tabItems[_selectedIndex];
+
   @override
   Widget build(BuildContext context) {
-    final isLoggerTab = _selectedIndex == 1;
     return Directionality(
       textDirection:
           widget._aliceCore.directionality ?? Directionality.of(context),
@@ -83,7 +90,7 @@ class _AliceCallsListScreenState extends State<AliceCallsListScreen>
         child: Scaffold(
           appBar: AppBar(
             title: _searchEnabled ? _buildSearchField() : _buildTitleWidget(),
-            actions: _buildActionWidgets(isLoggerTab),
+            actions: _buildActionWidgets(),
             bottom: TabBar(
               controller: _tabController,
               indicatorColor: AliceConstants.orange,
@@ -96,30 +103,111 @@ class _AliceCallsListScreenState extends State<AliceCallsListScreen>
           body: TabBarView(
             controller: _tabController,
             children: [
-              _buildCallsListWrapper(),
-              _buildLogsWidget(),
+              for (final item in _tabItems) _buildTabContent(item),
             ],
           ),
-          floatingActionButton: _buildFloatingActionButton(isLoggerTab),
+          floatingActionButton: _buildFloatingActionButton(),
         ),
       ),
     );
   }
 
-  List<Widget> _buildActionWidgets(bool isLoggerTab) {
-    return isLoggerTab
-        ? [
-            _buildLogsChangeButton(),
-            _buildLogsClearButton(),
-          ]
-        : [
-            _buildSearchButton(),
-            _buildMenuButton(),
-          ];
+  Widget _buildTabContent(AliceTabItem item) {
+    switch (item) {
+      case AliceTabItem.inspector:
+        return _buildCallsListWrapper();
+      case AliceTabItem.logger:
+        return _buildLogsWidget();
+      case AliceTabItem.analytics:
+        return AliceEventsListWidget(
+          aliceCore: aliceCore,
+          query: _queryTextEditingController.text,
+          filter: _eventFilter,
+          onFilterChanged: (filter) => setState(() => _eventFilter = filter),
+        );
+    }
   }
 
-  Widget _buildFloatingActionButton(bool isLoggerTab) {
-    return isLoggerTab
+  List<Widget> _buildActionWidgets() {
+    switch (_selectedTab) {
+      case AliceTabItem.inspector:
+        return [
+          _buildSearchButton(),
+          _buildMenuButton(),
+        ];
+      case AliceTabItem.logger:
+        return [
+          _buildLogsChangeButton(),
+          _buildLogsClearButton(),
+        ];
+      case AliceTabItem.analytics:
+        return [
+          _buildSearchButton(),
+          _buildEventsFilterButton(),
+          _buildEventsMenuButton(),
+        ];
+    }
+  }
+
+  Widget _buildEventsMenuButton() {
+    return PopupMenuButton<AliceMenuItem>(
+      key: const Key('events_menu'),
+      onSelected: (_) => _showRemoveEventsDialog(),
+      itemBuilder: (context) => [
+        for (final item in [_eventsDeleteMenuItem])
+          PopupMenuItem<AliceMenuItem>(
+            value: item,
+            child: Row(
+              children: [
+                Icon(item.iconData, color: AliceConstants.lightRed),
+                const Padding(padding: EdgeInsets.only(left: 10)),
+                Text(item.title),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  void _showRemoveEventsDialog() {
+    AliceAlertHelper.showAlert(
+      context,
+      'Delete events',
+      'Do you want to delete captured events?',
+      firstButtonTitle: 'No',
+      secondButtonTitle: 'Yes',
+      secondButtonAction: aliceCore.removeEvents,
+    );
+  }
+
+  Widget _buildEventsFilterButton() {
+    final count = _eventFilter.activeFilterCount;
+    return IconButton(
+      key: const Key('events_filter_button'),
+      tooltip: 'Filter & sort',
+      onPressed: _openEventsFilterSheet,
+      icon: Badge(
+        isLabelVisible: count > 0,
+        label: Text('$count'),
+        child: const Icon(Icons.tune),
+      ),
+    );
+  }
+
+  Future<void> _openEventsFilterSheet() async {
+    final filter = await showAliceEventsFilterSheet(
+      context,
+      events: aliceCore.eventsSubject.value,
+      hiddenEventNames: aliceCore.hiddenEventNames,
+      filter: _eventFilter,
+    );
+    if (filter != null && mounted) {
+      setState(() => _eventFilter = filter);
+    }
+  }
+
+  Widget _buildFloatingActionButton() {
+    return _selectedTab == AliceTabItem.logger
         ? Column(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
@@ -205,10 +293,8 @@ class _AliceCallsListScreenState extends State<AliceCallsListScreen>
   void _onTabChanged(int index) {
     setState(() {
       _selectedIndex = index;
-      if (_selectedIndex == 1) {
-        _searchEnabled = false;
-        _queryTextEditingController.text = '';
-      }
+      _searchEnabled = false;
+      _queryTextEditingController.text = '';
     });
   }
 
@@ -246,7 +332,9 @@ class _AliceCallsListScreenState extends State<AliceCallsListScreen>
       controller: _queryTextEditingController,
       autofocus: true,
       decoration: InputDecoration(
-        hintText: 'Search http request...',
+        hintText: _selectedTab == AliceTabItem.analytics
+            ? 'Search event name or parameter...'
+            : 'Search http request...',
         hintStyle: TextStyle(fontSize: 16, color: AliceConstants.grey),
         border: InputBorder.none,
       ),

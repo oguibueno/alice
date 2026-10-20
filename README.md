@@ -232,6 +232,38 @@ alice.addLog(log);
 alice.addLogs(logList);
 ```
 
+## Analytics events
+
+Captured events are shown in the "Analytics" tab, next to the HTTP inspector:
+
+```dart
+alice.addEvent(
+  AliceEvent(
+    name: 'checkout_started',
+    category: 'event',
+    parameters: {'items': 3},
+    metadata: {'screen': '/cart'},
+  ),
+);
+
+alice.clearEvents();
+```
+
+Use `maxEventsCount` to limit the number of stored events and `eventDetailBuilder` to add an extra "Details" tab to the event details screen (return `null` to hide it):
+
+```dart
+Alice(
+  maxEventsCount: 500,
+  eventDetailBuilder: (context, event) => MyEventDocs(eventName: event.name),
+);
+```
+
+Use `hiddenEventNames` to hide noisy events by default. Each hidden name gets an "Include <name> (count)" switch in the "Filter & sort" sheet of the "Analytics" tab to show them again:
+
+```dart
+Alice(hiddenEventNames: {'rc_parameter'});
+```
+
 
 
 ## Extensions
